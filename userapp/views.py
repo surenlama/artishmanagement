@@ -17,8 +17,8 @@ User = get_user_model()
 
 
 class UserAPIView(APIView):
-    # authentication_classes = [TokenAuthentication]
-    # permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
     pagination_class = MyPageNumberPagination
 
     def get(self, request, pk=None, format=None):
