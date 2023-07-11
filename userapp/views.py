@@ -20,7 +20,7 @@ User = get_user_model()
 class UserAPIView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
-    # pagination_class = MyPageNumberPagination
+    pagination_class = MyPageNumberPagination
 
     def get(self, request, pk=None, format=None):
         id = pk
@@ -60,10 +60,10 @@ class UserAPIView(APIView):
                 'updated_at': row[15]
             }
             users.append(user)
-        # paginator = MyPageNumberPagination()
-        # paginated_users = paginator.paginate_queryset(users, request)
-        serializer = UserGetSerializer(users, many=True)
-        return Response(serializer.data)
+        paginator = self.pagination_class()
+        paginated_musics = paginator.paginate_queryset(users, request)
+
+        return paginator.get_paginated_response(data=paginated_musics)
 
     def post(self, request, format=None):
         query = 'INSERT INTO "userapp_customuser" ("password", "last_login", "is_superuser", "first_name", "last_name", "is_staff", "is_active", "date_joined", "email", "phone", "dob", "gender", "address", "created_at", "updated_at") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'

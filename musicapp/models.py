@@ -18,7 +18,7 @@ class Artist(models.Model):
         return ""+str(self.id)
     
 class Music(models.Model):
-    artist_id = models.ForeignKey(Artist, on_delete=models.CASCADE)
+    artist_id = models.ForeignKey(Artist, on_delete=models.CASCADE,related_name="musics")
     title = models.CharField(max_length=250)
     album_name = models.CharField(max_length=250)
     genre = models.CharField(max_length=250, choices=GENRE_CHOICES)

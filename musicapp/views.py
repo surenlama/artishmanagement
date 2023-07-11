@@ -4,13 +4,15 @@ from django.shortcuts import render
 from .models import Music, Artist
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .serializer import ArtistGetSerializer, ArtistPostSerializer, MusicPostSerializer, MusicGetSerializer
+from .serializer import ArtistGetSerializer, ArtistPostSerializer,\
+    MusicPostSerializer, MusicGetSerializer,MusicArtistSerializer
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from .mypaginations import MyPageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.db import IntegrityError
+from django.utils import timezone
 
 # User Api View Start.
 
@@ -69,12 +71,13 @@ class MusicAPIView(APIView):
         title = request.data.get('title')
         album_name = request.data.get('album_name')
         genre = request.data.get('genre')
+        created_at = timezone.now()  
 
         query = '''
-            INSERT INTO "musicapp_music" ("artist_id_id", "title", "album_name", "genre")
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO "musicapp_music" ("artist_id_id", "title", "album_name", "genre","created_at")
+            VALUES (%s, %s, %s, %s, %s)
         '''
-        params = (artist_id, title, album_name, genre)
+        params = (artist_id, title, album_name, genre, created_at)
 
         with connection.cursor() as cursor:
             cursor.execute(query, params)
@@ -82,24 +85,26 @@ class MusicAPIView(APIView):
         return Response(status=status.HTTP_201_CREATED)
 
     def put(self, request, pk=None, format=None):
-        id = pk
-        artist_id = request.data.get('artist_id')
-        title = request.data.get('title')
-        album_name = request.data.get('album_name')
-        genre = request.data.get('genre')
+            id = pk
+            artist_id = request.data.get('artist_id')
+            title = request.data.get('title')
+            album_name = request.data.get('album_name')
+            genre = request.data.get('genre')
+            updated_at = timezone.now()  # Get the current datetime
 
-        query = '''
-            UPDATE "musicapp_music"
-            SET "artist_id_id" = %s, "title" = %s, "album_name" = %s, "genre" = %s
-            WHERE "id" = %s
-        '''
-        params = (artist_id, title, album_name, genre, id)
+            query = '''
+                UPDATE "musicapp_music"
+                SET "artist_id_id" = %s, "title" = %s, "album_name" = %s, "genre" = %s, "updated_at" = %s
+                WHERE "id" = %s
+            '''
+            params = (artist_id, title, album_name, genre, updated_at, id)
 
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
 
-        return Response(status=status.HTTP_200_OK)
-
+            return Response(status=status.HTTP_200_OK)
+        
+        
     def patch(self, request, pk=None, format=None):
         id = pk
         artist_id = request.data.get('artist_id')
@@ -141,7 +146,7 @@ class MusicAPIView(APIView):
 class ArtistAPIView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
-    # pagination_class = MyPageNumberPagination
+    pagination_class = MyPageNumberPagination
 
     def get(self, request, pk=None, format=None):
         id = pk
@@ -183,9 +188,11 @@ class ArtistAPIView(APIView):
                 'updated_at': row[8]
             }
             artists.append(artist)
+        paginator = self.pagination_class()
+        paginated_musics = paginator.paginate_queryset(artists, request)
 
-        serializer = ArtistGetSerializer(artists, many=True)
-        return Response(serializer.data)
+        return paginator.get_paginated_response(data=paginated_musics)
+
 
     def post(self, request, format=None):
         name = request.data.get('name')
@@ -194,14 +201,15 @@ class ArtistAPIView(APIView):
         address = request.data.get('address')
         first_release_year = request.data.get('first_release_year')
         no_of_albums_released = request.data.get('no_of_albums_released')
+        created_at = timezone.now()  # Get the current datetime
 
         query = '''
             INSERT INTO "musicapp_artist" ("name", "dob", "gender", "address",
-                                           "first_release_year", "no_of_albums_released")
-            VALUES (%s, %s, %s, %s, %s, %s)
+                                           "first_release_year", "no_of_albums_released","created_at")
+            VALUES (%s, %s, %s, %s, %s, %s,%s)
         '''
         params = (name, dob, gender, address,
-                  first_release_year, no_of_albums_released)
+                  first_release_year, no_of_albums_released,created_at)
 
         with connection.cursor() as cursor:
             cursor.execute(query, params)
@@ -209,26 +217,29 @@ class ArtistAPIView(APIView):
         return Response(status=status.HTTP_201_CREATED)
 
     def put(self, request, pk=None, format=None):
-        id = pk
-        name = request.data.get('name')
-        dob = request.data.get('dob')
-        gender = request.data.get('gender')
-        address = request.data.get('address')
-        first_release_year = request.data.get('first_release_year')
-        no_of_albums_released = request.data.get('no_of_albums_released')
-        query = '''
-            UPDATE "musicapp_artist"
-            SET "name" = %s, "dob" = %s, "gender" = %s, "address" = %s,
-                "first_release_year" = %s, "no_of_albums_released" = %s
-            WHERE "id" = %s
-        '''
-        params = (name, dob, gender, address,
-                  first_release_year, no_of_albums_released, id)
+            id = pk
+            name = request.data.get('name')
+            dob = request.data.get('dob')
+            gender = request.data.get('gender')
+            address = request.data.get('address')
+            first_release_year = request.data.get('first_release_year')
+            no_of_albums_released = request.data.get('no_of_albums_released')
+            updated_at = timezone.now()  # Get the current datetime
 
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
+            query = '''
+                UPDATE "musicapp_artist"
+                SET "name" = %s, "dob" = %s, "gender" = %s, "address" = %s,
+                    "first_release_year" = %s, "no_of_albums_released" = %s,
+                    "updated_at" = %s  -- Update the updated_at field
+                WHERE "id" = %s
+            '''
+            params = (name, dob, gender, address,
+                    first_release_year, no_of_albums_released, updated_at, id)
 
-        return Response(status=status.HTTP_200_OK)
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+
+            return Response(status=status.HTTP_200_OK)
 
     def patch(self, request, pk=None, format=None):
         id = pk
@@ -289,3 +300,70 @@ class ArtistAPIView(APIView):
             return Response("Artist deleted successfully")
         except IntegrityError:
             return Response("Cannot delete artist. Associated music exists.", status=400)
+        
+        
+
+
+class ArtistMusicAPIView(APIView):
+    # authentication_classes = [TokenAuthentication]
+    # permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk=None, format=None):
+        id = pk
+        if id is not None:
+            query = '''
+                SELECT "musicapp_artist"."id", "musicapp_artist"."name", "musicapp_artist"."dob", 
+                       "musicapp_artist"."gender", "musicapp_artist"."address", 
+                       "musicapp_artist"."first_release_year", "musicapp_artist"."no_of_albums_released", 
+                       "musicapp_artist"."created_at", "musicapp_artist"."updated_at",
+                       "musicapp_music"."id", "musicapp_music"."title", "musicapp_music"."album_name", 
+                       "musicapp_music"."genre", "musicapp_music"."created_at", "musicapp_music"."updated_at"
+                FROM "musicapp_artist"
+                LEFT JOIN "musicapp_music" ON "musicapp_music"."artist_id_id" = "musicapp_artist"."id"
+                WHERE "musicapp_artist"."id" = %s
+            '''
+            params = (id,)
+        else:
+            query = '''
+                SELECT "musicapp_artist"."id", "musicapp_artist"."name", "musicapp_artist"."dob", 
+                       "musicapp_artist"."gender", "musicapp_artist"."address", 
+                       "musicapp_artist"."first_release_year", "musicapp_artist"."no_of_albums_released", 
+                       "musicapp_artist"."created_at", "musicapp_artist"."updated_at",
+                       "musicapp_music"."id", "musicapp_music"."title", "musicapp_music"."album_name", 
+                       "musicapp_music"."genre", "musicapp_music"."created_at", "musicapp_music"."updated_at"
+                FROM "musicapp_artist"
+                LEFT JOIN "musicapp_music" ON "musicapp_music"."artist_id_id" = "musicapp_artist"."id"
+            '''
+            params = ()
+
+        with connection.cursor() as cursor:
+            cursor.execute(query, params)
+            result = cursor.fetchall()
+
+        artists = []
+        for row in result:
+            artist = {
+                'id': row[0],
+                'name': row[1],
+                'dob': row[2],
+                'gender': row[3],
+                'address': row[4],
+                'first_release_year': row[5],
+                'no_of_albums_released': row[6],
+                'created_at': row[7],
+                'updated_at': row[8],
+                'musics': []
+            }
+            if row[9]:
+                music = {
+                    'id': row[9],
+                    'title': row[10],
+                    'album_name': row[11],
+                    'genre': row[12],
+                    'created_at': row[13],
+                    'updated_at': row[14]
+                }
+                artist['musics'].append(music)
+            artists.append(artist)
+
+        return Response(artists)
