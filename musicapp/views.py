@@ -9,6 +9,9 @@ from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from .mypaginations import MyPageNumberPagination
+from django.shortcuts import get_object_or_404
+from django.db import IntegrityError
+
 # User Api View Start.
 
 
@@ -134,17 +137,18 @@ class MusicAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+
 class ArtistAPIView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
-    pagination_class = MyPageNumberPagination
+    # pagination_class = MyPageNumberPagination
 
     def get(self, request, pk=None, format=None):
         id = pk
         if id is not None:
             query = '''
                 SELECT "musicapp_artist"."id", "musicapp_artist"."name", "musicapp_artist"."dob", 
-                       "musicapp_artist"."gender", "musicapp_artist"."csv", "musicapp_artist"."address", 
+                       "musicapp_artist"."gender", "musicapp_artist"."address", 
                        "musicapp_artist"."first_release_year", "musicapp_artist"."no_of_albums_released", 
                        "musicapp_artist"."created_at", "musicapp_artist"."updated_at" 
                 FROM "musicapp_artist" 
@@ -154,7 +158,7 @@ class ArtistAPIView(APIView):
         else:
             query = '''
                 SELECT "musicapp_artist"."id", "musicapp_artist"."name", "musicapp_artist"."dob", 
-                       "musicapp_artist"."gender", "musicapp_artist"."csv", "musicapp_artist"."address", 
+                       "musicapp_artist"."gender", "musicapp_artist"."address", 
                        "musicapp_artist"."first_release_year", "musicapp_artist"."no_of_albums_released", 
                        "musicapp_artist"."created_at", "musicapp_artist"."updated_at" 
                 FROM "musicapp_artist"
@@ -172,35 +176,31 @@ class ArtistAPIView(APIView):
                 'name': row[1],
                 'dob': row[2],
                 'gender': row[3],
-                'csv': row[4],
-                'address': row[5],
-                'first_release_year': row[6],
-                'no_of_albums_released': row[7],
-                'created_at': row[8],
-                'updated_at': row[9]
+                'address': row[4],
+                'first_release_year': row[5],
+                'no_of_albums_released': row[6],
+                'created_at': row[7],
+                'updated_at': row[8]
             }
             artists.append(artist)
 
-        paginator = self.pagination_class()
-        paginated_artists = paginator.paginate_queryset(artists, request)
-
-        return paginator.get_paginated_response(data=paginated_artists)
+        serializer = ArtistGetSerializer(artists, many=True)
+        return Response(serializer.data)
 
     def post(self, request, format=None):
         name = request.data.get('name')
         dob = request.data.get('dob')
         gender = request.data.get('gender')
-        csv = request.data.get('csv')
         address = request.data.get('address')
         first_release_year = request.data.get('first_release_year')
         no_of_albums_released = request.data.get('no_of_albums_released')
 
         query = '''
-            INSERT INTO "musicapp_artist" ("name", "dob", "gender", "csv", "address",
+            INSERT INTO "musicapp_artist" ("name", "dob", "gender", "address",
                                            "first_release_year", "no_of_albums_released")
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
         '''
-        params = (name, dob, gender, csv, address,
+        params = (name, dob, gender, address,
                   first_release_year, no_of_albums_released)
 
         with connection.cursor() as cursor:
@@ -213,18 +213,16 @@ class ArtistAPIView(APIView):
         name = request.data.get('name')
         dob = request.data.get('dob')
         gender = request.data.get('gender')
-        csv = request.data.get('csv')
         address = request.data.get('address')
         first_release_year = request.data.get('first_release_year')
         no_of_albums_released = request.data.get('no_of_albums_released')
-
         query = '''
             UPDATE "musicapp_artist"
-            SET "name" = %s, "dob" = %s, "gender" = %s, "csv" = %s, "address" = %s,
+            SET "name" = %s, "dob" = %s, "gender" = %s, "address" = %s,
                 "first_release_year" = %s, "no_of_albums_released" = %s
             WHERE "id" = %s
         '''
-        params = (name, dob, gender, csv, address,
+        params = (name, dob, gender, address,
                   first_release_year, no_of_albums_released, id)
 
         with connection.cursor() as cursor:
@@ -238,7 +236,6 @@ class ArtistAPIView(APIView):
         name = request.data.get('name')
         dob = request.data.get('dob')
         gender = request.data.get('gender')
-        csv = request.data.get('csv')
         address = request.data.get('address')
         first_release_year = request.data.get('first_release_year')
         no_of_albums_released = request.data.get('no_of_albums_released')
@@ -255,9 +252,6 @@ class ArtistAPIView(APIView):
         if gender is not None:
             set_clause.append('"gender" = %s')
             params.append(gender)
-        if csv is not None:
-            set_clause.append('"csv" = %s')
-            params.append(csv)
         if address is not None:
             set_clause.append('"address" = %s')
             params.append(address)
@@ -282,16 +276,16 @@ class ArtistAPIView(APIView):
 
         return Response(status=status.HTTP_200_OK)
 
+
     def delete(self, request, pk=None, format=None):
-        id = pk
-
         query = '''
-            DELETE FROM "musicapp_artist"
-            WHERE "id" = %s
+            DELETE FROM musicapp_artist
+            WHERE id = %s
         '''
-        params = (id,)
-
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        params = (pk,)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+            return Response("Artist deleted successfully")
+        except IntegrityError:
+            return Response("Cannot delete artist. Associated music exists.", status=400)

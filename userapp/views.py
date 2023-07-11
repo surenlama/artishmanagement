@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from .mypaginations import MyPageNumberPagination
 from django.contrib.auth.hashers import make_password
 from rest_framework.authtoken.models import Token
+from django.utils import timezone
 
 # User Api View Start.
 
@@ -19,7 +20,7 @@ User = get_user_model()
 class UserAPIView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
-    pagination_class = MyPageNumberPagination
+    # pagination_class = MyPageNumberPagination
 
     def get(self, request, pk=None, format=None):
         id = pk
@@ -59,10 +60,10 @@ class UserAPIView(APIView):
                 'updated_at': row[15]
             }
             users.append(user)
-        paginator = MyPageNumberPagination()
-        paginated_users = paginator.paginate_queryset(users, request)
-        serializer = UserGetSerializer(paginated_users, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        # paginator = MyPageNumberPagination()
+        # paginated_users = paginator.paginate_queryset(users, request)
+        serializer = UserGetSerializer(users, many=True)
+        return Response(serializer.data)
 
     def post(self, request, format=None):
         query = 'INSERT INTO "userapp_customuser" ("password", "last_login", "is_superuser", "first_name", "last_name", "is_staff", "is_active", "date_joined", "email", "phone", "dob", "gender", "address", "created_at", "updated_at") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
@@ -197,11 +198,42 @@ class UserAPIView(APIView):
 
     def delete(self, request, pk, format=None):
         id = pk
-        query = 'DELETE FROM "userapp_customuser" WHERE "id" = %s'
-        params = (id,)
+        # Delete the user
+        user_query = 'DELETE FROM userapp_customuser WHERE id = %s'
+        user_params = (id,)
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(user_query, user_params)
+                return Response({'msg': 'User Deleted'}, status=status.HTTP_204_NO_CONTENT)
+        except Exception:
+                print('enter')
+                if id:
+                    user = User.objects.get(id=id)
+                    user.delete()
+                    return Response({'msg': 'User Deleted'}, status=status.HTTP_204_NO_CONTENT)
+                else:
+                    return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+       
+
+class RegisterAPIView(APIView):
+    def post(self, request, format=None):
+        email = request.data.get('email')
+        password = make_password(request.data.get('password'))  # Hash the password
+        current_datetime = timezone.now()
+        print('email',email)
+        query = '''
+            INSERT INTO userapp_customuser (email, password, is_superuser,first_name,last_name,\
+                is_staff,is_active,date_joined)
+            VALUES (%s, %s, %s,%s,%s,%s,%s,%s)
+        '''
+        params = (email, password, False,'','',True,True,current_datetime)
 
         with connection.cursor() as cursor:
-            # Execute the SQL query with parameters
             cursor.execute(query, params)
 
-        return Response({'msg': 'User Deleted'})
+        user = User.objects.get(email=email)
+        token = Token.objects.create(user=user)
+
+        return Response({'token': token.key}, status=status.HTTP_201_CREATED)

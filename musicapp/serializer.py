@@ -16,9 +16,9 @@ class MusicPostSerializer(serializers.ModelSerializer):
 class ArtistGetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artist
-        fields = ['name','dob','gender','csv','address','first_release_year','no_of_albums_released','created_at','updated_at']    
+        fields = ['id','name','dob','gender','address','first_release_year','no_of_albums_released','created_at','updated_at']    
         
 class ArtistPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artist
-        fields = ['name','dob','gender','csv','address','first_release_year','no_of_albums_released','created_at','updated_at']
+        fields = ['name','dob','gender','address','first_release_year','no_of_albums_released','created_at','updated_at']
