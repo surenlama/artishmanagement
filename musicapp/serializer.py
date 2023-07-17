@@ -66,7 +66,7 @@ class CSVSerializer(serializers.ModelSerializer):
             decoded_file = value.read().decode('utf-8')
             csv_data = csv.reader(decoded_file.splitlines())
 
-            header = next(csv_data)  # Skip the header row
+            header = next(csv_data)  
 
             for row in csv_data:
                 if len(row) != len(header):
@@ -77,15 +77,14 @@ class CSVSerializer(serializers.ModelSerializer):
                     )
 
                 # Perform additional validation for each row
-                # Example: Validate first_release_year field
+
                 first_release_year = row[3].strip()
                 try:
                     datetime.datetime.strptime(first_release_year, '%Y-%m-%d')
                 except ValueError:
                     raise serializers.ValidationError(
-                        'Please arrange your values in the following format for import:\n'
-                        'name,gender,address,first_release_year,no_of_albums_released\n'
-                        'John Doe,Male,123 Main Street,2022-02-04,1'
+                        f'Invalid date format for first_release_year: {first_release_year}. '
+                        'Please provide the date in the format YYYY-MM-DD.'
                     )
         except UnicodeDecodeError:
             raise serializers.ValidationError('Unable to decode the CSV file. Please ensure the file is in UTF-8 encoding.')
