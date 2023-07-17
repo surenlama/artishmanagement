@@ -2,7 +2,7 @@ from django.db import connection
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .serializer import UserGetSerializer
+from .serializer import UserSerializer, UserRegisterSerializer
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +10,9 @@ from .mypaginations import MyPageNumberPagination
 from django.contrib.auth.hashers import make_password
 from rest_framework.authtoken.models import Token
 from django.utils import timezone
+
+current_datetime = timezone.now()
+
 
 # User Api View Start.
 
@@ -66,135 +69,144 @@ class UserAPIView(APIView):
         return paginator.get_paginated_response(data=paginated_musics)
 
     def post(self, request, format=None):
-        query = 'INSERT INTO "userapp_customuser" ("password", "last_login", "is_superuser", "first_name", "last_name", "is_staff", "is_active", "date_joined", "email", "phone", "dob", "gender", "address", "created_at", "updated_at") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+        serializer = UserSerializer(data=request.data)
 
-        # Extract the data from the request
-        password = make_password(request.data.get('password'))  # Hash the password
-        last_login = request.data.get('last_login')
-        is_superuser = request.data.get('is_superuser')
-        first_name = request.data.get('first_name')
-        last_name = request.data.get('last_name')
-        is_staff = request.data.get('is_staff')
-        is_active = request.data.get('is_active')
-        date_joined = request.data.get('date_joined')
-        email = request.data.get('email')
-        phone = request.data.get('phone')
-        dob = request.data.get('dob')
-        gender = request.data.get('gender')
-        address = request.data.get('address')
-        created_at = request.data.get('created_at')
-        updated_at = request.data.get('updated_at')
+        if serializer.is_valid():
+            query = 'INSERT INTO "userapp_customuser" ("password",  "is_superuser",\
+            "first_name", "last_name", "is_staff", "is_active", "date_joined", \
+            "email","phone", "dob", "gender", "address", "created_at") \
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
-        params = (password, last_login, is_superuser, first_name, last_name, is_staff,
-                  is_active, date_joined, email, phone, dob, gender, address, created_at, updated_at)
+            # Extract the data from the request
+            password = make_password(request.data.get('password'))  # Hash the password
+            is_superuser = True
+            first_name = request.data.get('first_name')
+            last_name = request.data.get('last_name')
+            is_staff = True
+            is_active = True
+            date_joined = current_datetime
+            email = request.data.get('email')
+            phone = request.data.get('phone')
+            dob = request.data.get('dob')
+            gender = request.data.get('gender')
+            address = request.data.get('address')
+            created_at = current_datetime
+            print(password,is_superuser,first_name,last_name,is_staff,is_active,date_joined,email,phone, dob, gender, address, created_at)
 
-        with connection.cursor() as cursor:
-            # Execute the SQL query with parameters
-            cursor.execute(query, params)
-            user_id = cursor.lastrowid
+            params = (password, is_superuser, first_name, last_name, is_staff,is_active, date_joined, email, phone, dob, gender, address, created_at)
 
-        # Retrieve the user object
-        user = User.objects.get(pk=user_id)
+            with connection.cursor() as cursor:
+                # Execute the SQL query with parameters
+                cursor.execute(query, params)
+                user_id = cursor.lastrowid
 
-        # Create a token for the user
-        token = Token.objects.create(user=user)
-        return Response({'token': token.key}, status=status.HTTP_201_CREATED)
+            # Retrieve the user object
+            user = User.objects.get(pk=user_id)
+
+            # Create a token for the user
+            token = Token.objects.create(user=user)
+            return Response({'token': token.key}, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, pk, format=None):
-        id = pk
-        query = '''
-            UPDATE "userapp_customuser"
-            SET "password" = %s,
-                "last_login" = %s,
-                "is_superuser" = %s,
-                "first_name" = %s,
-                "last_name" = %s,
-                "is_staff" = %s,
-                "is_active" = %s,
-                "date_joined" = %s,
-                "email" = %s,
-                "phone" = %s,
-                "dob" = %s,
-                "gender" = %s,
-                "address" = %s,
-                "created_at" = %s,
-                "updated_at" = %s
-            WHERE "id" = %s
-        '''
+        serializer = UserSerializer(data=request.data)
 
-        # Extract the data from the request
-        password = request.data.get('password')
-        last_login = request.data.get('last_login')
-        is_superuser = request.data.get('is_superuser')
-        first_name = request.data.get('first_name')
-        last_name = request.data.get('last_name')
-        is_staff = request.data.get('is_staff')
-        is_active = request.data.get('is_active')
-        date_joined = request.data.get('date_joined')
-        email = request.data.get('email')
-        phone = request.data.get('phone')
-        dob = request.data.get('dob')
-        gender = request.data.get('gender')
-        address = request.data.get('address')
-        created_at = request.data.get('created_at')
-        updated_at = request.data.get('updated_at')
+        if serializer.is_valid():
 
-        params = (password, last_login, is_superuser, first_name, last_name, is_staff, is_active,
-                  date_joined, email, phone, dob, gender, address, created_at, updated_at, id)
+            id = pk
+            query = '''
+                UPDATE "userapp_customuser"
+                SET "password" = %s,
+                    "is_superuser" = %s,
+                    "first_name" = %s,
+                    "last_name" = %s,
+                    "is_staff" = %s,
+                    "is_active" = %s,
+                    "date_joined" = %s,
+                    "email" = %s,
+                    "phone" = %s,
+                    "dob" = %s,
+                    "gender" = %s,
+                    "address" = %s,
+                    "updated_at" = %s
+                WHERE "id" = %s
+            '''
 
-        with connection.cursor() as cursor:
-            # Execute the SQL query with parameters
-            cursor.execute(query, params)
+            # Extract the data from the request
+            password = request.data.get('password')
+            is_superuser = True
+            first_name = request.data.get('first_name')
+            last_name = request.data.get('last_name')
+            is_staff = True
+            is_active = True
+            date_joined = current_datetime
+            email = request.data.get('email')
+            phone = request.data.get('phone')
+            dob = request.data.get('dob')
+            gender = request.data.get('gender')
+            address = request.data.get('address')
+            updated_at = current_datetime
 
-        return Response({'msg': 'User Updated'})
+            params = (password, is_superuser, first_name, last_name, is_staff, is_active,
+                      date_joined, email, phone, dob, gender, address, updated_at, id)
+
+            with connection.cursor() as cursor:
+                # Execute the SQL query with parameters
+                cursor.execute(query, params)
+
+            return Response({'msg': 'User Updated'})
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk, format=None):
-        id = pk
-        query = '''
-            UPDATE "userapp_customuser"
-            SET "password" = COALESCE(%s, "userapp_customuser"."password"),
-                "last_login" = COALESCE(%s, "userapp_customuser"."last_login"),
-                "is_superuser" = COALESCE(%s, "userapp_customuser"."is_superuser"),
-                "first_name" = COALESCE(%s, "userapp_customuser"."first_name"),
-                "last_name" = COALESCE(%s, "userapp_customuser"."last_name"),
-                "is_staff" = COALESCE(%s, "userapp_customuser"."is_staff"),
-                "is_active" = COALESCE(%s, "userapp_customuser"."is_active"),
-                "date_joined" = COALESCE(%s, "userapp_customuser"."date_joined"),
-                "email" = COALESCE(%s, "userapp_customuser"."email"),
-                "phone" = COALESCE(%s, "userapp_customuser"."phone"),
-                "dob" = COALESCE(%s, "userapp_customuser"."dob"),
-                "gender" = COALESCE(%s, "userapp_customuser"."gender"),
-                "address" = COALESCE(%s, "userapp_customuser"."address"),
-                "created_at" = COALESCE(%s, "userapp_customuser"."created_at"),
-                "updated_at" = COALESCE(%s, "userapp_customuser"."updated_at")
-            WHERE "id" = %s
-        '''
+        serializer = UserSerializer(data=request.data)
 
-        # Extract the data from the request
-        password = request.data.get('password')
-        last_login = request.data.get('last_login')
-        is_superuser = request.data.get('is_superuser')
-        first_name = request.data.get('first_name')
-        last_name = request.data.get('last_name')
-        is_staff = request.data.get('is_staff')
-        is_active = request.data.get('is_active')
-        date_joined = request.data.get('date_joined')
-        email = request.data.get('email')
-        phone = request.data.get('phone')
-        dob = request.data.get('dob')
-        gender = request.data.get('gender')
-        address = request.data.get('address')
-        created_at = request.data.get('created_at')
-        updated_at = request.data.get('updated_at')
+        if serializer.is_valid():
+            id = pk
+            query = '''
+                UPDATE "userapp_customuser"
+                SET "password" = COALESCE(%s, "userapp_customuser"."password"),
+                    "is_superuser" = COALESCE(%s, "userapp_customuser"."is_superuser"),
+                    "first_name" = COALESCE(%s, "userapp_customuser"."first_name"),
+                    "last_name" = COALESCE(%s, "userapp_customuser"."last_name"),
+                    "is_staff" = COALESCE(%s, "userapp_customuser"."is_staff"),
+                    "is_active" = COALESCE(%s, "userapp_customuser"."is_active"),
+                    "date_joined" = COALESCE(%s, "userapp_customuser"."date_joined"),
+                    "email" = COALESCE(%s, "userapp_customuser"."email"),
+                    "phone" = COALESCE(%s, "userapp_customuser"."phone"),
+                    "dob" = COALESCE(%s, "userapp_customuser"."dob"),
+                    "gender" = COALESCE(%s, "userapp_customuser"."gender"),
+                    "address" = COALESCE(%s, "userapp_customuser"."address"),
+                    "updated_at" = COALESCE(%s, "userapp_customuser"."updated_at")
+                WHERE "id" = %s
+            '''
 
-        params = (password, last_login, is_superuser, first_name, last_name, is_staff, is_active,
-                  date_joined, email, phone, dob, gender, address, created_at, updated_at, id)
+            # Extract the data from the request
+            password = request.data.get('password')
+            is_superuser = True
+            first_name = request.data.get('first_name')
+            last_name = request.data.get('last_name')
+            is_staff = True
+            is_active = True
+            date_joined = current_datetime
+            email = request.data.get('email')
+            phone = request.data.get('phone')
+            dob = request.data.get('dob')
+            gender = request.data.get('gender')
+            address = request.data.get('address')
+            updated_at = request.data.get('updated_at')
 
-        with connection.cursor() as cursor:
-            # Execute the SQL query with parameters
-            cursor.execute(query, params)
+            params = (password, is_superuser, first_name, last_name, is_staff, is_active,
+                      date_joined, email, phone, dob, gender, address, updated_at, id)
 
-        return Response({'msg': 'User Updated'})
+            with connection.cursor() as cursor:
+                # Execute the SQL query with parameters
+                cursor.execute(query, params)
+
+            return Response({'msg': 'User Updated'})
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, format=None):
         id = pk
@@ -207,33 +219,37 @@ class UserAPIView(APIView):
                 cursor.execute(user_query, user_params)
                 return Response({'msg': 'User Deleted'}, status=status.HTTP_204_NO_CONTENT)
         except Exception:
-                print('enter')
-                if id:
-                    user = User.objects.get(id=id)
-                    user.delete()
-                    return Response({'msg': 'User Deleted'}, status=status.HTTP_204_NO_CONTENT)
-                else:
-                    return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        
-       
+            print('enter')
+            if id:
+                user = User.objects.get(id=id)
+                user.delete()
+                return Response({'msg': 'User Deleted'}, status=status.HTTP_204_NO_CONTENT)
+            else:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
 
 class RegisterAPIView(APIView):
     def post(self, request, format=None):
-        email = request.data.get('email')
-        password = make_password(request.data.get('password'))  # Hash the password
-        current_datetime = timezone.now()
-        print('email',email)
-        query = '''
-            INSERT INTO userapp_customuser (email, password, is_superuser,first_name,last_name,\
-                is_staff,is_active,date_joined)
-            VALUES (%s, %s, %s,%s,%s,%s,%s,%s)
-        '''
-        params = (email, password, False,'','',True,True,current_datetime)
+        serializer = UserRegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            email = request.data.get('email')
+            password = make_password(request.data.get(
+                'password'))  # Hash the password
+            print('email', email)
+            query = '''
+                INSERT INTO userapp_customuser (email, password, is_superuser,first_name,last_name,\
+                    is_staff,is_active,date_joined)
+                VALUES (%s, %s, %s,%s,%s,%s,%s,%s)
+            '''
+            params = (email, password, False, '', '',
+                      True, True, current_datetime)
 
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
 
-        user = User.objects.get(email=email)
-        token = Token.objects.create(user=user)
+            user = User.objects.get(email=email)
+            token = Token.objects.create(user=user)
 
-        return Response({'token': token.key}, status=status.HTTP_201_CREATED)
+            return Response({'token': token.key}, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -4,3 +4,4 @@ Pillow==9.0.1
 PyJWT==2.3.0
 djangorestframework-simplejwt==5.2.2
 django-cors-headers==4.1.0
+weasyprint==59.0
